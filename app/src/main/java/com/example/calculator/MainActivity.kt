@@ -1,28 +1,41 @@
 package com.example.calculator
 
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.calculator.logic.CalculatorProcessor
+import com.example.calculator.presentation.scanner.ScannerScreen
 import com.example.calculator.ui.theme.CalcAction
 import com.example.calculator.ui.theme.CalcDarkText
 import com.example.calculator.ui.theme.CalcGray
 import com.example.calculator.ui.theme.CalcSpecial
 import java.math.BigDecimal
-
+import android.Manifest;
+import androidx.compose.material.icons.rounded.AddCircle
 
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -33,6 +46,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CalculatorScreen() {
     // Состояния
@@ -42,6 +56,35 @@ fun CalculatorScreen() {
     var isNewOp by remember { mutableStateOf(true) }
 
     val processor = remember { CalculatorProcessor() }
+
+    var showScanner by remember {mutableStateOf(false)}
+
+    val context = LocalContext.current
+
+    // Состояние разрешения на камеру
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            showScanner = true
+        } else {
+            Toast.makeText(context, "Нет доступа к камере", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun openScanner() {
+        val permission = Manifest.permission.CAMERA
+        if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
+            showScanner = true
+        } else {
+            cameraPermissionLauncher.launch(permission)
+        }
+    }
+
+    fun onNumberScanned(number: String) {
+        displayText = number
+        isNewOp = true
+    }
 
     // Вспомогательные функции для работы с числами
     fun getCurrentNumber(): BigDecimal? {
@@ -99,6 +142,12 @@ fun CalculatorScreen() {
                 listOf("0", ".", "=")
             )
 
+            IconButton(onClick = { showScanner = true }) {
+                Icon(
+                    imageVector = Icons.Default.AddCircle,
+                    contentDescription = "Сканировать число"
+                )
+            }
             buttons.forEach { row ->
                 Row(
                     modifier = Modifier
@@ -108,6 +157,8 @@ fun CalculatorScreen() {
                         .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+
+
                     row.forEach { symbol ->
                         CalcButton(
                             symbol = symbol,
@@ -218,6 +269,16 @@ fun CalculatorScreen() {
                 }
             }
         }
+    }
+
+    if (showScanner) {
+        ScannerScreen(
+            onNumberDetected = { number ->
+                onNumberScanned(number)
+                showScanner = false
+            },
+            onClose = { showScanner = false }
+        )
     }
 }
 
