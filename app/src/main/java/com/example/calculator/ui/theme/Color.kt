@@ -10,6 +10,7 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
-val CalcGray = Color(0xFFF1F1F1)     // Светло-серый для цифр
-val CalcAction = Color(0xFFE0E7FF)   // Нежно-голубой/фиолетовый вместо оранжевого
-val CalcDarkText = Color(0xFF212121) // Почти черный для текста
+val CalcGray = Color(0xFFF3F3F3)
+val CalcAction = Color(0xFFE0E7FF)
+val CalcSpecial = Color(0xFFE5E5E5)
+val CalcDarkText = Color(0xFF2D2D2D)

@@ -87,7 +87,7 @@ fun CalculatorScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Контейнер для всех строк кнопок (тоже вес)
+        // контейнер для всех строк кнопок (тоже вес)
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -103,6 +103,7 @@ fun CalculatorScreen() {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .wrapContentHeight()
                         .weight(1f)               // каждая строка равной высоты
                         .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
