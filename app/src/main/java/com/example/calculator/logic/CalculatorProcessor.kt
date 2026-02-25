@@ -7,25 +7,29 @@ import java.math.MathContext
 class CalculatorProcessor {
     private val mc = MathContext(16, RoundingMode.HALF_UP)
 
-    fun calculate(first: Double, second: Double, operator: String): String {
-        val b1 = BigDecimal(first.toString())
-        val b2 = BigDecimal(second.toString())
-
-        val result = try {
+    // Выполняет вычисление, возвращает BigDecimal или null (ошибка)
+    fun calculate(first: BigDecimal, second: BigDecimal, operator: String): BigDecimal? {
+        return try {
             when (operator) {
-                "+" -> b1.add(b2, mc)
-                "-" -> b1.subtract(b2, mc)
-                "*" -> b1.multiply(b2, mc)
-                "/" -> if (b2.toDouble() == 0.0) return "Error" else b1.divide(b2, 8, RoundingMode.HALF_UP)
-                else -> b2
+                "+" -> first.add(second, mc)
+                "-" -> first.subtract(second, mc)
+                "*" -> first.multiply(second, mc)
+                "/" -> {
+                    if (second.compareTo(BigDecimal.ZERO) == 0) {
+                        return null // деление на ноль
+                    } else {
+                        first.divide(second, 8, RoundingMode.HALF_UP)
+                    }
+                }
+                else -> second
             }
         } catch (e: Exception) {
-            return "Error"
+            null
         }
-        return formatResult(result)
     }
 
-    private fun formatResult(result: BigDecimal): String {
+    // Преобразует BigDecimal в строку для отображения (с экспонентой при необходимости)
+    fun formatResult(result: BigDecimal): String {
         val absValue = result.abs()
 
         return if (absValue >= BigDecimal("1000000000000000") ||
@@ -37,25 +41,8 @@ class CalculatorProcessor {
         }
     }
 
-    fun toggleSign(displayText: String): String {
-        if (displayText == "0" || displayText == "Error") return displayText
+    fun toggleSign(value: BigDecimal): BigDecimal = value.negate()
 
-        return if (displayText.startsWith("-")) {
-            displayText.removePrefix("-")
-        } else {
-            "-$displayText"
-        }
-    }
-
-    fun applyPercentage(displayText: String): String {
-        if (displayText == "Error") return displayText
-
-        return try {
-            val value = BigDecimal(displayText)
-            val result = value.divide(BigDecimal("100"), mc)
-            formatResult(result)
-        } catch (e: Exception) {
-            displayText
-        }
-    }
+    fun applyPercentage(value: BigDecimal): BigDecimal =
+        value.divide(BigDecimal("100"), mc)
 }
