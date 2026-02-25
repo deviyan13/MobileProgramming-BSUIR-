@@ -1,5 +1,6 @@
 package com.example.calculator.logic
 
+import android.annotation.SuppressLint
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.math.MathContext
@@ -28,14 +29,18 @@ class CalculatorProcessor {
         }
     }
 
-    // Преобразует BigDecimal в строку для отображения (с экспонентой при необходимости)
+    @SuppressLint("DefaultLocale")
     fun formatResult(result: BigDecimal): String {
+        if (result.compareTo(BigDecimal.ZERO) == 0) return "0"
+
         val absValue = result.abs()
+        val smallThreshold = BigDecimal("1e-6")
+        val largeThreshold = BigDecimal("1e12")
 
-        return if (absValue >= BigDecimal("1000000000000000") ||
-            (absValue < BigDecimal("0.000001") && absValue != BigDecimal.ZERO)) {
+        return if (absValue >= largeThreshold || (absValue <= smallThreshold && absValue > BigDecimal.ZERO)) {
 
-            "%.9E".format(result).replace("E+", "e")
+            val scientific = String.format("%.6E", result)
+            scientific.replace("E+", "e").replace("E-", "e-")
         } else {
             result.stripTrailingZeros().toPlainString()
         }
