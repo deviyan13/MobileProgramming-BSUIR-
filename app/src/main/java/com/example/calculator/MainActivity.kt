@@ -3,7 +3,6 @@ package com.example.calculator
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -14,13 +13,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-// Импортируй свой процессор (проверь путь!)
 import com.example.calculator.logic.CalculatorProcessor
+import java.math.BigDecimal
 
-val CalcGray = Color(0xFFF3F3F3)      // Светло-серый для цифр
-val CalcAction = Color(0xFFE0E7FF)    // Нежно-голубой для операций
-val CalcSpecial = Color(0xFFE5E5E5)   // Серый для AC, +/-, %
-val CalcDarkText = Color(0xFF2D2D2D)  // Цвет текста
+// Цвета (оставьте как у вас)
+val CalcGray = Color(0xFFF3F3F3)
+val CalcAction = Color(0xFFE0E7FF)
+val CalcSpecial = Color(0xFFE5E5E5)
+val CalcDarkText = Color(0xFF2D2D2D)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,13 +35,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun CalculatorScreen() {
-    // Состояния (State)
     var displayText by remember { mutableStateOf("0") }
-    var operand1 by remember { mutableStateOf<Double?>(null) }
+    // operand1 теперь хранится как BigDecimal (точное значение)
+    var operand1 by remember { mutableStateOf<BigDecimal?>(null) }
     var pendingOperator by remember { mutableStateOf("") }
     var isNewOp by remember { mutableStateOf(true) }
 
     val processor = remember { CalculatorProcessor() }
+
+    fun getCurrentNumber(): BigDecimal? {
+        return if (displayText == "Error") null else displayText.toBigDecimalOrNull()
+    }
+
+    fun updateDisplayFromNumber(number: BigDecimal?) {
+        displayText = if (number == null) "Error" else processor.formatResult(number)
+    }
 
     val fontSize = when {
         displayText.length > 10 -> 35.sp
@@ -75,7 +83,6 @@ fun CalculatorScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // СЕТКА КНОПОК
         val buttons = listOf(
             listOf("AC", "+/-", "%", "÷"),
             listOf("7", "8", "9", "×"),
@@ -111,27 +118,58 @@ fun CalculatorScreen() {
                                     pendingOperator = ""
                                     isNewOp = true
                                 }
-                                "+/-" -> displayText = processor.toggleSign(displayText)
-                                "%" -> displayText = processor.applyPercentage(displayText)
+                                "+/-" -> {
+                                    val current = getCurrentNumber()
+                                    if (current != null) {
+                                        val newValue = processor.toggleSign(current)
+                                        updateDisplayFromNumber(newValue)
+                                        isNewOp = false
+                                    }
+                                }
+                                "%" -> {
+                                    val current = getCurrentNumber()
+                                    if (current != null) {
+                                        val newValue = processor.applyPercentage(current)
+                                        updateDisplayFromNumber(newValue)
+                                        isNewOp = false
+                                    }
+                                }
                                 "÷", "×", "-", "+" -> {
-                                    val currentVal = displayText.toDoubleOrNull()
-                                    if (currentVal != null) {
+                                    val currentNumber = getCurrentNumber()
+                                    if (currentNumber != null) {
                                         if (operand1 != null && !isNewOp) {
-                                            val res = processor.calculate(operand1!!, currentVal, pendingOperator)
-                                            displayText = res
-                                            operand1 = res.toDoubleOrNull()
+                                            val result = processor.calculate(operand1!!, currentNumber, pendingOperator)
+                                            if (result != null) {
+                                                updateDisplayFromNumber(result)
+                                                operand1 = result      // сохраняем результат как первый операнд
+                                            } else {
+                                                displayText = "Error"
+                                                operand1 = null
+                                            }
                                         } else {
-                                            operand1 = currentVal
+                                            operand1 = currentNumber   // просто запоминаем первый операнд
                                         }
                                     }
-                                    pendingOperator = when(symbol) { "×" -> "*"; "÷" -> "/"; else -> symbol }
+                                    // запоминаем оператор
+                                    pendingOperator = when (symbol) {
+                                        "×" -> "*"
+                                        "÷" -> "/"
+                                        else -> symbol
+                                    }
                                     isNewOp = true
                                 }
                                 "=" -> {
-                                    val operand2 = displayText.toDoubleOrNull()
-                                    if (operand1 != null && operand2 != null && pendingOperator.isNotEmpty()) {
-                                        displayText = processor.calculate(operand1!!, operand2, pendingOperator)
-                                        operand1 = null
+                                    val currentNumber = getCurrentNumber()
+                                    if (operand1 != null && currentNumber != null && pendingOperator.isNotEmpty()) {
+                                        val result = processor.calculate(operand1!!, currentNumber, pendingOperator)
+                                        if (result != null) {
+                                            updateDisplayFromNumber(result)
+                                            // результат в operand1 для цепочки операций
+                                            operand1 = result
+                                        } else {
+                                            displayText = "Error"
+                                            operand1 = null
+                                        }
                                         pendingOperator = ""
                                         isNewOp = true
                                     }
@@ -144,7 +182,7 @@ fun CalculatorScreen() {
                                         displayText += "."
                                     }
                                 }
-                                else -> { // Обработка цифр
+                                else -> { // цифры
                                     if (isNewOp || displayText == "0" || displayText == "Error") {
                                         displayText = symbol
                                         isNewOp = false
@@ -171,7 +209,7 @@ fun CalcButton(
     Button(
         onClick = onClick,
         modifier = modifier.height(82.dp),
-        shape = RoundedCornerShape(24.dp), // Красивое "яблочное" скругление
+        shape = RoundedCornerShape(24.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = CalcDarkText
