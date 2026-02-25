@@ -26,12 +26,15 @@ class CalculatorProcessor {
     }
 
     private fun formatResult(result: BigDecimal): String {
-        var formatted = result.stripTrailingZeros().toPlainString()
+        val absValue = result.abs()
 
-        if (formatted.length > 12) {
-            formatted = formatted.take(12)
+        return if (absValue >= BigDecimal("1000000000000000") ||
+            (absValue < BigDecimal("0.000001") && absValue != BigDecimal.ZERO)) {
+
+            "%.9E".format(result).replace("E+", "e")
+        } else {
+            result.stripTrailingZeros().toPlainString()
         }
-        return formatted
     }
 
     fun toggleSign(displayText: String): String {
