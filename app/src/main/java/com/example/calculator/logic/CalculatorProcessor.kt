@@ -1,25 +1,58 @@
 package com.example.calculator.logic
 
-class CalculatorProcessor {
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.math.MathContext
 
-    fun calculate(first: Double, second: Double, operator: String): Double {
-        return when (operator) {
-            "+" -> first + second
-            "-" -> first - second
-            "*" -> first * second
-            "/" -> {
-                if (second != 0.0) first / second
-                else 0.0 // Здесь можно потом добавить обработку ошибки "деление на ноль"
+class CalculatorProcessor {
+    private val mc = MathContext(16, RoundingMode.HALF_UP)
+
+    fun calculate(first: Double, second: Double, operator: String): String {
+        val b1 = BigDecimal(first.toString())
+        val b2 = BigDecimal(second.toString())
+
+        val result = try {
+            when (operator) {
+                "+" -> b1.add(b2, mc)
+                "-" -> b1.subtract(b2, mc)
+                "*" -> b1.multiply(b2, mc)
+                "/" -> if (b2.toDouble() == 0.0) return "Error" else b1.divide(b2, 8, RoundingMode.HALF_UP)
+                else -> b2
             }
-            else -> 0.0
+        } catch (e: Exception) {
+            return "Error"
+        }
+        return formatResult(result)
+    }
+
+    private fun formatResult(result: BigDecimal): String {
+        var formatted = result.stripTrailingZeros().toPlainString()
+
+        if (formatted.length > 12) {
+            formatted = formatted.take(12)
+        }
+        return formatted
+    }
+
+    fun toggleSign(displayText: String): String {
+        if (displayText == "0" || displayText == "Error") return displayText
+
+        return if (displayText.startsWith("-")) {
+            displayText.removePrefix("-")
+        } else {
+            "-$displayText"
         }
     }
 
-    fun toggleSign(value: String): String {
-        return if (value.startsWith("-")) value.drop(1) else "-$value"
-    }
+    fun applyPercentage(displayText: String): String {
+        if (displayText == "Error") return displayText
 
-    fun applyPercentage(value: String): String {
-        return (value.toDoubleOrNull()?.div(100))?.toString() ?: value
+        return try {
+            val value = BigDecimal(displayText)
+            val result = value.divide(BigDecimal("100"), mc)
+            formatResult(result)
+        } catch (e: Exception) {
+            displayText
+        }
     }
 }
