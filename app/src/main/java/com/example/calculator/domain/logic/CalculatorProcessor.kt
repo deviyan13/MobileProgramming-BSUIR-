@@ -1,4 +1,4 @@
-package com.example.calculator.logic
+package com.example.calculator.domain.logic
 
 import android.annotation.SuppressLint
 import java.math.BigDecimal

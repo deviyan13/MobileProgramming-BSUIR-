@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -31,7 +32,6 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
-
 @Composable
 fun ScannerScreen(
     onNumberDetected: (String) -> Unit,
@@ -40,7 +40,6 @@ fun ScannerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // PreviewView
     val previewView = remember {
         PreviewView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -52,10 +51,11 @@ fun ScannerScreen(
     }
 
     val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
-    val detectedNumbers = remember { mutableStateListOf<String>() }
+
+    // Используем обычный MutableState с List, чтобы полностью заменять список
+    var detectedNumbers by remember { mutableStateOf(emptyList<String>()) }
     val scope = rememberCoroutineScope()
 
-    // 2. Инициализация камеры
     LaunchedEffect(Unit) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
@@ -66,19 +66,17 @@ fun ScannerScreen(
             }
 
             val imageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST) // Важно для скорости
                 .build()
 
             imageAnalysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
                 processImageForNumbers(imageProxy, recognizer) { numbers ->
-                    scope.launch(Dispatchers.Main) {
-                        numbers.forEach { number ->
-                            if (number !in detectedNumbers) {
-                                detectedNumbers.add(number)
-                            }
-                        }
+                    // Обновляем список только если данные реально изменились
+                    if (numbers != detectedNumbers) {
+                        detectedNumbers = numbers
                     }
                 }
+                // Закрываем прокси СРАЗУ после отправки на распознавание
                 imageProxy.close()
             }
 
@@ -96,27 +94,18 @@ fun ScannerScreen(
         }, androidx.core.content.ContextCompat.getMainExecutor(context))
     }
 
-    // 3. UI Слой
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        // Камера на заднем плане
-        AndroidView(
-            factory = { previewView },
-            modifier = Modifier.fillMaxSize()
-        )
+        AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
-        // Кнопка закрытия (Крестик)
+        // Крестик закрытия
         IconButton(
             onClick = onClose,
             modifier = Modifier
                 .padding(top = 40.dp, end = 16.dp)
                 .align(Alignment.TopEnd)
-                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
+                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
         ) {
-            Icon(
-                imageVector = Icons.Default.Close, // Импортируй androidx.compose.material.icons.filled.Close
-                contentDescription = "Закрыть",
-                tint = Color.White
-            )
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
         }
 
         // Панель найденных чисел
@@ -131,47 +120,36 @@ fun ScannerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f)),
-                    shape = RoundedCornerShape(24.dp)
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Нажмите на число для ввода:",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.Black
+                            text = "Найдено: ${detectedNumbers.size}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.Gray
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Ключевой момент: LazyRow с ключами для плавной анимации
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
-                            items(detectedNumbers) { number ->
+                            items(detectedNumbers, key = { it }) { number ->
                                 Button(
                                     onClick = { onNumberDetected(number) },
+                                    shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFE0E7FF),
-                                        contentColor = Color.Black
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 ) {
-                                    Text(number)
+                                    Text(text = number, style = MaterialTheme.typography.titleMedium)
                                 }
                             }
                         }
                     }
-                }
-            } else {
-                // Подсказка, пока ничего не найдено
-                Surface(
-                    color = Color.Black.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.align(Alignment.Center)
-                ) {
-                    Text(
-                        text = "Наведите камеру на текст с числами",
-                        color = Color.White,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
                 }
             }
         }
