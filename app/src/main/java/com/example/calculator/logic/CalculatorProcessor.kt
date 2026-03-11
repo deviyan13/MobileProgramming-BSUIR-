@@ -31,18 +31,16 @@ class CalculatorProcessor {
 
     @SuppressLint("DefaultLocale")
     fun formatResult(result: BigDecimal): String {
-        if (result.compareTo(BigDecimal.ZERO) == 0) return "0"
+        // лишние нули в конце перед проверкой на длину
+        val stripped = result.stripTrailingZeros()
+        val absValue = stripped.abs()
 
-        val absValue = result.abs()
-        val smallThreshold = BigDecimal("1e-6")
-        val largeThreshold = BigDecimal("1e12")
-
-        return if (absValue >= largeThreshold || (absValue <= smallThreshold && absValue > BigDecimal.ZERO)) {
-
+        // Если число слишком большое или маленькое — используем экспоненту
+        return if (stripped.scale() > 8 || absValue >= BigDecimal("1000000000000") || (absValue < BigDecimal("0.000001") && absValue > BigDecimal.ZERO)) {
             val scientific = String.format("%.6E", result)
             scientific.replace("E+", "e").replace("E-", "e-")
         } else {
-            result.stripTrailingZeros().toPlainString()
+            stripped.toPlainString()
         }
     }
 

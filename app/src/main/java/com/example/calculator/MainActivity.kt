@@ -30,14 +30,17 @@ import com.example.calculator.ui.theme.CalcDarkText
 import com.example.calculator.ui.theme.CalcGray
 import com.example.calculator.ui.theme.CalcSpecial
 import java.math.BigDecimal
-import android.Manifest;
-import androidx.compose.material.icons.rounded.AddCircle
-
+import android.Manifest
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        val SplashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
         setContent {
             Surface(color = Color.White) {
                 CalculatorScreen()
@@ -57,8 +60,7 @@ fun CalculatorScreen() {
 
     val processor = remember { CalculatorProcessor() }
 
-    var showScanner by remember {mutableStateOf(false)}
-
+    var showScanner by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     // Состояние разрешения на камеру
@@ -109,7 +111,7 @@ fun CalculatorScreen() {
             .padding(16.dp),
         verticalArrangement = Arrangement.Bottom
     ) {
-        // Поле вывода (занимает 1 часть веса)
+        // Поле вывода
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -130,9 +132,27 @@ fun CalculatorScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // контейнер для всех строк кнопок (тоже вес)
+        // Строка с кнопкой сканера (вынесена отдельно)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            IconButton(onClick = { openScanner() }) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Сканировать число",
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+        }
+
+        // Контейнер для кнопок калькулятора
         Column(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
         ) {
             val buttons = listOf(
                 listOf("AC", "+/-", "%", "÷"),
@@ -142,34 +162,27 @@ fun CalculatorScreen() {
                 listOf("0", ".", "=")
             )
 
-            IconButton(onClick = { showScanner = true }) {
-                Icon(
-                    imageVector = Icons.Default.AddCircle,
-                    contentDescription = "Сканировать число"
-                )
-            }
-            buttons.forEach { row ->
+            // Распределяем строки равномерно по высоте
+            buttons.forEachIndexed { index, row ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .wrapContentHeight()
-                        .weight(1f)               // каждая строка равной высоты
+                        .weight(1f) // каждая строка занимает равную долю высоты
                         .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-
-
                     row.forEach { symbol ->
                         CalcButton(
                             symbol = symbol,
                             modifier = Modifier
                                 .weight(if (symbol == "0") 2.1f else 1f)
-                                .fillMaxHeight(),
+                                .fillMaxHeight(), // кнопка растягивается по высоте строки
                             containerColor = when {
                                 symbol in listOf("÷", "×", "-", "+", "=") -> CalcAction
                                 symbol in listOf("AC", "+/-", "%") -> CalcSpecial
                                 else -> CalcGray
                             },
+                            // Внутри CalculatorScreen
                             onClick = {
                                 when (symbol) {
                                     "AC" -> {
@@ -178,70 +191,31 @@ fun CalculatorScreen() {
                                         pendingOperator = ""
                                         isNewOp = true
                                     }
-                                    "+/-" -> {
-                                        val current = getCurrentNumber()
-                                        if (current != null) {
-                                            val newValue = processor.toggleSign(current)
-                                            updateDisplayFromNumber(newValue)
-                                            isNewOp = false
-                                        }
-                                    }
-                                    "%" -> {
-                                        val current = getCurrentNumber()
-                                        if (current != null) {
-                                            val newValue = processor.applyPercentage(current)
-                                            updateDisplayFromNumber(newValue)
-                                            isNewOp = false
-                                        }
-                                    }
                                     "÷", "×", "-", "+" -> {
                                         val currentNumber = getCurrentNumber()
                                         if (currentNumber != null) {
                                             if (operand1 != null && !isNewOp) {
-                                                // Выполнить предыдущую операцию
-                                                val result = processor.calculate(
-                                                    operand1!!,
-                                                    currentNumber,
-                                                    when (pendingOperator) {
-                                                        "×" -> "*"
-                                                        "÷" -> "/"
-                                                        else -> pendingOperator
-                                                    }
-                                                )
+                                                // Промежуточное вычисление при нажатии на оператор
+                                                val result = processor.calculate(operand1!!, currentNumber,
+                                                    if (pendingOperator == "×") "*" else if (pendingOperator == "÷") "/" else pendingOperator)
                                                 if (result != null) {
                                                     updateDisplayFromNumber(result)
                                                     operand1 = result
-                                                } else {
-                                                    displayText = "Error"
-                                                    operand1 = null
                                                 }
                                             } else {
                                                 operand1 = currentNumber
                                             }
                                         }
-                                        // Запомнить оператор
                                         pendingOperator = symbol
                                         isNewOp = true
                                     }
                                     "=" -> {
                                         val currentNumber = getCurrentNumber()
                                         if (operand1 != null && currentNumber != null && pendingOperator.isNotEmpty()) {
-                                            val result = processor.calculate(
-                                                operand1!!,
-                                                currentNumber,
-                                                when (pendingOperator) {
-                                                    "×" -> "*"
-                                                    "÷" -> "/"
-                                                    else -> pendingOperator
-                                                }
-                                            )
-                                            if (result != null) {
-                                                updateDisplayFromNumber(result)
-                                                operand1 = result
-                                            } else {
-                                                displayText = "Error"
-                                                operand1 = null
-                                            }
+                                            val result = processor.calculate(operand1!!, currentNumber,
+                                                if (pendingOperator == "×") "*" else if (pendingOperator == "÷") "/" else pendingOperator)
+                                            updateDisplayFromNumber(result)
+                                            operand1 = null // Сбрасываем для нового расчета
                                             pendingOperator = ""
                                             isNewOp = true
                                         }
@@ -254,12 +228,13 @@ fun CalculatorScreen() {
                                             displayText += "."
                                         }
                                     }
-                                    else -> { // цифры
-                                        if (isNewOp || displayText == "0" || displayText == "Error") {
+                                    else -> { // Цифры
+                                        if (isNewOp) {
                                             displayText = symbol
                                             isNewOp = false
-                                        } else if (displayText.length < 12) {
-                                            displayText += symbol
+                                        } else {
+                                            if (displayText == "0") displayText = symbol
+                                            else if (displayText.length < 15) displayText += symbol
                                         }
                                     }
                                 }

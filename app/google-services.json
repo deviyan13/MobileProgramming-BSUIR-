@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "450176667911",
+    "project_id": "mobile-android-test-d2fae",
+    "storage_bucket": "mobile-android-test-d2fae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:450176667911:android:27e83c0126734f3ac2f5a2",
+        "android_client_info": {
+          "package_name": "com.example.calculator"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYz4JveYtVHSnumnhtqlrs-Lf1m-WToLI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

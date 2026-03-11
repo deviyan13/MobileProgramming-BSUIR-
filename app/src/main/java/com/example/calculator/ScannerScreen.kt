@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +40,7 @@ fun ScannerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // 1. Стабильный объект PreviewView
+    // PreviewView
     val previewView = remember {
         PreviewView(context).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -77,7 +79,6 @@ fun ScannerScreen(
                         }
                     }
                 }
-                // Важно закрыть прокси, чтобы получить следующий кадр
                 imageProxy.close()
             }
 
@@ -111,7 +112,11 @@ fun ScannerScreen(
                 .align(Alignment.TopEnd)
                 .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50))
         ) {
-            Text("✕", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+            Icon(
+                imageVector = Icons.Default.Close, // Импортируй androidx.compose.material.icons.filled.Close
+                contentDescription = "Закрыть",
+                tint = Color.White
+            )
         }
 
         // Панель найденных чисел
